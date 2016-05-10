@@ -1,0 +1,3 @@
+= SoundIO
+
+Nim https://github.com/andrewrk/libsoundio[libsoundio] wrapper.
