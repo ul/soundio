@@ -1,5 +1,3 @@
-{.experimental.}
-
 import math
 import soundio
 
@@ -14,7 +12,6 @@ type
 
 proc writeCallback(outStream: ptr SoundIoOutStream, frameCountMin: cint, frameCountMax: cint) {.cdecl.} =
   let csz = sizeof SoundIoChannelArea
-  let fsz = sizeof float32
   let deltaPhase = 1.0/outStream.sampleRate.toFloat
   var areas: ptr SoundIoChannelArea
   var phase = cast[ptr float64](outStream.userdata)
@@ -34,7 +31,7 @@ proc writeCallback(outStream: ptr SoundIoOutStream, frameCountMin: cint, frameCo
       phase[] += deltaPhase
       for channel in 0..<layout.channelCount:
         let ptrArea = cast[ptr SoundIoChannelArea](ptrAreas + channel*csz)
-        var ptrSample = cast[ptr float32](cast[int](ptrArea.pointer) + frame*fsz)
+        var ptrSample = cast[ptr float32](cast[int](ptrArea.pointer) + frame*ptrArea.step)
         ptrSample[] = sample
     err = outstream.endWrite
     if err > 0 and err != cint(SoundIoError.Underflow):
@@ -115,7 +112,7 @@ proc newOutStream(ss: SoundSystem): Result[OutStream] =
   if err > 0:
     return oserr "Unable to start stream: " & $err.strerror
 
-  return Result[OutStream](value: OutStream(stream: stream, userdata: phase))
+  return Result[OutStream](kind: Ok, value: OutStream(stream: stream, userdata: phase))
 
 # ---
 
