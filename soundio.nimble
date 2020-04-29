@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.0"
+version       = "0.2.0"
 author        = "Ruslan Prokopchuk"
 description   = "Bindings for libsoundio, a library providing cross-platform audio input and output."
 license       = "MIT"
