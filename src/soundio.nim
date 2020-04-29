@@ -429,6 +429,8 @@ type
     ## For JACK, this value is always equal to
     ## SoundIoDevice::software_latency_current of the device.
     software_latency*: cdouble
+    ## Core Audio and WASAPI only: current output Audio Unit volume. Float, 0.0-1.0.
+    volume*: cfloat
     ## Defaults to NULL. Put whatever you want here.
     userdata*: pointer
     ## In this callback, you call ::soundio_outstream_begin_write and
