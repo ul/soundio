@@ -1,15 +1,6 @@
 import math
 import soundio
 
-type
-  ResultKind = enum Ok, Err
-  Result[T] = object
-    case kind: ResultKind
-    of Ok: value: T
-    of Err: msg: string
-
-# ---
-
 proc writeCallback(outStream: ptr SoundIoOutStream, frameCountMin: cint, frameCountMax: cint) {.cdecl.} =
   let csz = sizeof SoundIoChannelArea
   let deltaPhase = 1.0/outStream.sampleRate.toFloat
@@ -51,35 +42,30 @@ proc `=destroy`(s: var SoundSystem) =
   s.device.unref
   s.sio.destroy
 
-proc sserr(msg: string): Result[SoundSystem] =
-  return Result[SoundSystem](kind: Err, msg: msg)
-
-proc newSoundSystem(): Result[SoundSystem] =
+proc newSoundSystem(): SoundSystem =
   let sio = soundioCreate()
   if sio.isNil:
-    return sserr "out of mem"
+    quit "out of mem"
 
   var err = sio.connect
   if err > 0:
-    return sserr "Unable to connect to backend: " & $err.strerror
+    quit "Unable to connect to backend: " & $err.strerror
 
   echo "Backend: \t", sio.currentBackend.name
   sio.flushEvents
 
   let devID = sio.defaultOutputDeviceIndex
   if devID < 0:
-    return sserr "Output device is not found"
+    quit "Output device is not found"
   let device = sio.getOutputDevice(devID)
   if device.isNil:
-    return sserr "out of mem"
+    quit "out of mem"
   if device.probeError > 0:
-    return sserr "Cannot probe device"
+    quit "Cannot probe device"
 
   echo "Output device:\t", device.name
 
-  return Result[SoundSystem](
-    kind: Ok,
-    value: SoundSystem(sio: sio, device: device))
+  return SoundSystem(sio: sio, device: device)
 
 # ---
 
@@ -92,10 +78,7 @@ proc `=destroy`(s: var OutStream) =
   s.stream.destroy
   dealloc(s.userdata)
 
-proc oserr(msg: string): Result[OutStream] =
-  return Result[OutStream](kind: Err, msg: msg)
-
-proc newOutStream(ss: SoundSystem): Result[OutStream] =
+proc newOutStream(ss: SoundSystem): OutStream =
   let stream = ss.device.outStreamCreate
   stream.write_callback = writeCallback
   var phase = alloc(sizeof(float64))
@@ -103,28 +86,21 @@ proc newOutStream(ss: SoundSystem): Result[OutStream] =
 
   var err = stream.open
   if err > 0:
-    return oserr "Unable to open device: " & $err.strerror
+    quit "Unable to open device: " & $err.strerror
 
   if stream.layoutError > 0:
-    return oserr "Unable to set channel layout: " & $stream.layoutError.strerror
+    quit "Unable to set channel layout: " & $stream.layoutError.strerror
 
   err = stream.start
   if err > 0:
-    return oserr "Unable to start stream: " & $err.strerror
+    quit "Unable to start stream: " & $err.strerror
 
-  return Result[OutStream](kind: Ok, value: OutStream(stream: stream, userdata: phase))
+  return OutStream(stream: stream, userdata: phase)
 
 # ---
 
-let rss = newSoundSystem()
-if rss.kind == Err:
-  quit rss.msg
-let ss = rss.value
-
-let ros = newOutStream(ss)
-if ros.kind == Err:
-  quit ros.msg
-let outstream = ros.value.stream
+let ss = newSoundSystem()
+let outstream = newOutStream(ss).stream
 
 echo "Format:\t\t", outstream.format
 echo "Sample Rate:\t", outstream.sampleRate
